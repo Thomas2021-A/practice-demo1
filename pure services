@@ -1,0 +1,356 @@
+import axios from "axios";
+
+export const USER_API_URL = '/api/users';
+
+/**
+ * Register a new user
+ * Calls POST /api/users/register
+ */
+export const registerUser = async (user) => {
+    try {
+        const response = await axios.post(`${USER_API_URL}/register`, {
+            name: user.name,
+            emailId: user.emailId,
+            password: user.password,
+            role: user.role, // 'PROJECT_OWNER' or 'ASSIGNEE'
+            profileImage: user.profileImage
+        });
+        return response.data;
+    } catch (error) {
+        console.error('Error Registering the User - ', error);
+        const serverMsg = error.response?.data?.errorMessage || error.response?.data?.message || (typeof error.response?.data === 'string' ? error.response.data : error.message);
+        throw new Error(serverMsg || 'An error occurred during registration.');
+    }
+};
+
+/**
+ * Login user
+ * Calls POST /api/users/login?name=&emailId=...&password=...&role=...
+ */
+export const login = async (emailId, password, role) => {
+    try {
+        const normalizedRole = role ? role.toUpperCase().replace(/\s+/g, '_') : '';
+        const response = await axios.post(
+            `${USER_API_URL}/login?name=&emailId=${encodeURIComponent(emailId)}&password=${encodeURIComponent(password)}&role=${encodeURIComponent(normalizedRole)}`
+        );
+        return { success: true, user: response.data };
+    } catch (error) {
+        console.error('Error Logging in the User - ', error);
+        const serverMsg = error.response?.data?.errorMessage || error.response?.data?.message || (typeof error.response?.data === 'string' ? error.response.data : 'Invalid credentials. Please try again.');
+        return { success: false, user: null, error: serverMsg };
+    }
+};
+
+/**
+ * Fetch all users
+ * Calls GET /api/users/all
+ */
+export const getAllUsers = async () => {
+    try {
+        const response = await axios.get(`${USER_API_URL}/all`);
+        return response.data;
+    } catch (error) {
+        console.error('Error fetching all users - ', error);
+        if (error.response?.data?.errorMessage?.includes('No users found')) {
+            return [];
+        }
+        throw error;
+    }
+};
+
+/**
+ * Fetch a single user by ID
+ * Calls GET /api/users/{userId}
+ */
+export const getUserById = async (userId) => {
+    try {
+        const response = await axios.get(`${USER_API_URL}/${userId}`);
+        return response.data;
+    } catch (error) {
+        console.error('Error fetching user by ID - ', error);
+        throw error;
+    }
+};
+
+/**
+ * Fetch issues assigned to a specific user
+ * Calls GET /api/users/{userId}/issues
+ */
+export const getIssuesByUserId = async (userId) => {
+    try {
+        const response = await axios.get(`${USER_API_URL}/${userId}/issues`);
+        return response.data;
+    } catch (error) {
+        console.error('Error fetching issues by user ID - ', error);
+        if (error.response?.data?.errorMessage?.includes('no issues')) {
+            return [];
+        }
+        return [];
+    }
+};
+
+
+
+
+
+
+
+
+
+
+
+
+
+import axios from "axios";
+
+export const PROJECT_API_URL = '/api/projects';
+
+/**
+ * Fetch all projects
+ * Calls GET /api/projects
+ */
+export const getAllProjects = async () => {
+    try {
+        const response = await axios.get(PROJECT_API_URL);
+        return response.data;
+    } catch (error) {
+        console.error('Error fetching all projects - ', error);
+        if (error.response?.data?.errorMessage?.includes('No projects found')) {
+            return [];
+        }
+        throw error;
+    }
+};
+
+/**
+ * Fetch projects owned by a specific project owner
+ * Calls GET /api/projects/owner/{ownerId}
+ */
+export const getProjectsByOwner = async (ownerId) => {
+    try {
+        const response = await axios.get(`${PROJECT_API_URL}/owner/${ownerId}`);
+        return response.data;
+    } catch (error) {
+        console.error('Error fetching projects by owner - ', error);
+        if (error.response?.data?.errorMessage?.includes('No projects found') || error.response?.status === 404) {
+            return [];
+        }
+        throw error;
+    }
+};
+
+/**
+ * Fetch a single project by ID
+ * Calls GET /api/projects/{projectId}
+ */
+export const getProjectById = async (projectId) => {
+    try {
+        const response = await axios.get(`${PROJECT_API_URL}/${projectId}`);
+        return response.data;
+    } catch (error) {
+        console.error('Error fetching project by ID - ', error);
+        throw error;
+    }
+};
+
+/**
+ * Create a new project
+ * Calls POST /api/projects
+ */
+export const createProject = async (project) => {
+    try {
+        const response = await axios.post(PROJECT_API_URL, project);
+        return response.data;
+    } catch (error) {
+        console.error('Error creating project - ', error);
+        const serverMsg = error.response?.data?.errorMessage || error.response?.data?.message || (typeof error.response?.data === 'string' ? error.response.data : error.message);
+        throw new Error(serverMsg || 'Failed to create project.');
+    }
+};
+
+/**
+ * Update an existing project
+ * Calls PUT /api/projects/{id}
+ */
+export const updateProject = async (id, project) => {
+    try {
+        const response = await axios.put(`${PROJECT_API_URL}/${id}`, project);
+        return response.data;
+    } catch (error) {
+        console.error('Error updating project - ', error);
+        const serverMsg = error.response?.data?.errorMessage || error.response?.data?.message || 'Failed to update project.';
+        throw new Error(serverMsg);
+    }
+};
+
+/**
+ * Delete a project
+ * Calls DELETE /api/projects/{id}
+ */
+export const deleteProject = async (id) => {
+    try {
+        const response = await axios.delete(`${PROJECT_API_URL}/${id}`);
+        return response.data;
+    } catch (error) {
+        console.error('Error deleting project - ', error);
+        const serverMsg = error.response?.data?.errorMessage || 'Failed to delete project.';
+        throw new Error(serverMsg);
+    }
+};
+
+/**
+ * Fetch issues belonging to a specific project
+ * Calls GET /api/projects/{projectId}/issues
+ */
+export const getIssuesByProjectId = async (projectId) => {
+    try {
+        const response = await axios.get(`${PROJECT_API_URL}/${projectId}/issues`);
+        return response.data;
+    } catch (error) {
+        console.error('Error fetching project issues - ', error);
+        if (error.response?.data?.errorMessage?.includes('No issues discovered') || error.response?.status === 404) {
+            return [];
+        }
+        return [];
+    }
+};
+
+
+
+
+
+
+
+
+
+
+
+
+
+import axios from "axios";
+
+export const ISSUE_API_URL = '/api/issues';
+
+/**
+ * Fetch all issues
+ * Calls GET /api/issues
+ */
+export const getAllIssues = async () => {
+    try {
+        const response = await axios.get(ISSUE_API_URL);
+        return response.data;
+    } catch (error) {
+        console.error('Error fetching all issues - ', error);
+        if (error.response?.data?.errorMessage?.includes('No issues') || error.response?.status === 404) {
+            return [];
+        }
+        throw error;
+    }
+};
+
+/**
+ * Fetch a single issue by its ID
+ * Calls GET /api/issues/{id}
+ */
+export const getIssueById = async (id) => {
+    try {
+        const response = await axios.get(`${ISSUE_API_URL}/${id}`);
+        return response.data;
+    } catch (error) {
+        console.error('Error fetching issue by ID - ', error);
+        const serverMsg = error.response?.data?.errorMessage || error.response?.data?.message || 'Issue not found.';
+        throw new Error(serverMsg);
+    }
+};
+
+/**
+ * Fetch issues by Project ID
+ * Calls GET /api/issues/project/{projectId}
+ */
+export const getIssuesByProjectId = async (projectId) => {
+    try {
+        const response = await axios.get(`${ISSUE_API_URL}/project/${projectId}`);
+        return response.data;
+    } catch (error) {
+        console.error('Error fetching issues by project ID - ', error);
+        if (error.response?.data?.errorMessage?.includes('No issues discovered') || error.response?.status === 404) {
+            return [];
+        }
+        return [];
+    }
+};
+
+/**
+ * Fetch issues by Project Owner (creator) ID
+ * Calls GET /api/issues/owner/{ownerId}
+ */
+export const getIssuesByOwnerId = async (ownerId) => {
+    try {
+        const response = await axios.get(`${ISSUE_API_URL}/owner/${ownerId}`);
+        return response.data;
+    } catch (error) {
+        console.error('Error fetching issues by owner ID - ', error);
+        if (error.response?.data?.errorMessage?.includes('No issues discovered') || error.response?.status === 404) {
+            return [];
+        }
+        return [];
+    }
+};
+
+/**
+ * Fetch issues assigned to an Assignee
+ * Calls GET /api/issues/assignee/{assigneeId}
+ */
+export const getIssuesByAssigneeId = async (assigneeId) => {
+    try {
+        const response = await axios.get(`${ISSUE_API_URL}/assignee/${assigneeId}`);
+        return response.data;
+    } catch (error) {
+        console.error('Error fetching issues by assignee ID - ', error);
+        if (error.response?.data?.errorMessage?.includes('No issues discovered') || error.response?.status === 404) {
+            return [];
+        }
+        return [];
+    }
+};
+
+/**
+ * Create a new issue
+ * Calls POST /api/issues
+ */
+export const createIssue = async (issue) => {
+    try {
+        const response = await axios.post(ISSUE_API_URL, issue);
+        return response.data;
+    } catch (error) {
+        console.error('Error creating issue - ', error);
+        const serverMsg = error.response?.data?.errorMessage || error.response?.data?.message || (typeof error.response?.data === 'string' ? error.response.data : error.message);
+        throw new Error(serverMsg || 'Failed to create issue.');
+    }
+};
+
+/**
+ * Update an existing issue
+ * Calls PUT /api/issues/{id}
+ */
+export const updateIssue = async (id, issue) => {
+    try {
+        const response = await axios.put(`${ISSUE_API_URL}/${id}`, issue);
+        return response.data;
+    } catch (error) {
+        console.error('Error updating issue - ', error);
+        const serverMsg = error.response?.data?.errorMessage || error.response?.data?.message || 'Failed to update issue.';
+        throw new Error(serverMsg);
+    }
+};
+
+
+
+
+
+
+
+
+
+
+
