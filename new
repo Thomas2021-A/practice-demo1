@@ -1,0 +1,657 @@
+File 1: APIGateway/src/main/java/com/gateway/CorsConfig.java
+
+package com.gateway;
+
+import java.util.Arrays;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.web.cors.CorsConfiguration;
+import org.springframework.web.cors.reactive.CorsWebFilter;
+import org.springframework.web.cors.reactive.UrlBasedCorsConfigurationSource;
+
+@Configuration
+public class CorsConfig {
+
+    @Bean
+    public CorsWebFilter corsWebFilter() {
+        CorsConfiguration corsConfig = new CorsConfiguration();
+        corsConfig.setAllowedOriginPatterns(Arrays.asList("http://localhost:5173", "http://localhost:3000", "*"));
+        corsConfig.setMaxAge(3600L);
+        corsConfig.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS", "HEAD"));
+        corsConfig.setAllowedHeaders(Arrays.asList("*"));
+        corsConfig.setAllowCredentials(false);
+
+        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+        source.registerCorsConfiguration("/**", corsConfig);
+
+        return new CorsWebFilter(source);
+    }
+}
+
+
+
+
+
+
+
+
+
+
+
+File 2: APIGateway/src/main/resources/application.properties
+
+spring.application.name=APIGateway
+server.port=9000
+
+eureka.client.service-url.defaultZone=http://localhost:8761/eureka/
+
+# Global CORS Configuration
+spring.cloud.gateway.globalcors.cors-configurations.[/**].allowed-origin-patterns=http://localhost:5173,http://localhost:3000,*
+spring.cloud.gateway.globalcors.cors-configurations.[/**].allowed-methods=GET,POST,PUT,DELETE,OPTIONS,HEAD
+spring.cloud.gateway.globalcors.cors-configurations.[/**].allowed-headers=*
+spring.cloud.gateway.globalcors.cors-configurations.[/**].allow-credentials=false
+
+spring.cloud.gateway.routes[0].id=UserServiceMS
+spring.cloud.gateway.routes[0].uri=lb://UserServiceMS
+spring.cloud.gateway.routes[0].predicates[0]=Path=/api/users/**
+
+spring.cloud.gateway.routes[1].id=IssueServiceMS
+spring.cloud.gateway.routes[1].uri=lb://IssueServiceMS
+spring.cloud.gateway.routes[1].predicates[0]=Path=/api/issues/**
+
+spring.cloud.gateway.routes[2].id=ProjectServiceMS
+spring.cloud.gateway.routes[2].uri=lb://ProjectServiceMS
+spring.cloud.gateway.routes[2].predicates[0]=Path=/api/projects/**
+
+
+
+
+
+
+
+
+
+
+
+
+
+File 3: IssueServiceMS/src/main/java/com/issue/service/IssueServiceImpl.java
+
+
+package com.issue.service;
+ 
+import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Optional;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+
+import com.issue.entity.Issue;
+import com.issue.exception.IssueException;
+import com.issue.model.IssueDTO;
+import com.issue.repository.IssueRepository;
+ 
+@Service
+public class IssueServiceImpl implements IssueService {
+	@Autowired
+	private IssueRepository issueRepository;
+
+	@Override
+	public List<IssueDTO> getIssuesByAssigneeId(Integer assigneeId) throws IssueException {
+		List<Issue> issuesList = issueRepository.findByAssignee(assigneeId);
+		List<IssueDTO> dtoList = new ArrayList<>();
+		try {
+			if(issuesList == null || issuesList.isEmpty()) {
+				return dtoList;
+			}
+			for (Issue issue : issuesList) {
+				IssueDTO dto = new IssueDTO();
+				dto.setId(issue.getId());
+				dto.setSummary(issue.getSummary());
+				dto.setDescription(issue.getDescription());
+				dto.setProject(issue.getProject());
+				dto.setAssignee(issue.getAssignee());
+				dto.setCreatedBy(issue.getCreatedBy());
+				dto.setCreatedOn(issue.getCreatedOn());
+				dto.setLastUpdated(issue.getLastUpdated());
+				dto.setSprint(issue.getSprint());
+				dto.setStoryPoint(issue.getStoryPoint());
+				dto.setTags(issue.getTags());
+				dto.setPriority(issue.getPriority());
+				dto.setStatus(issue.getStatus());
+				dto.setType(issue.getType());
+				dtoList.add(dto);
+			}
+		} catch(Exception exception) {
+			exception.printStackTrace();
+			throw exception;
+		}
+		return dtoList;
+	}
+ 
+	@Override
+	public IssueDTO getIssueById(Integer id) throws IssueException {
+		Optional<Issue> optional = issueRepository.findById(id);
+		IssueDTO dto = new IssueDTO();
+		try {
+			Issue issue = optional.orElseThrow(() -> new IssueException("Issue not found with ID: " + id));
+			dto.setId(issue.getId());
+			dto.setSummary(issue.getSummary());
+			dto.setDescription(issue.getDescription());
+			dto.setProject(issue.getProject());
+			dto.setAssignee(issue.getAssignee());
+			dto.setCreatedBy(issue.getCreatedBy());
+			dto.setCreatedOn(issue.getCreatedOn());
+			dto.setLastUpdated(issue.getLastUpdated());
+			dto.setSprint(issue.getSprint());
+			dto.setStoryPoint(issue.getStoryPoint());
+			dto.setTags(issue.getTags());
+			dto.setPriority(issue.getPriority());
+			dto.setStatus(issue.getStatus());
+			dto.setType(issue.getType());
+		} catch(Exception exception) {
+			exception.printStackTrace();
+			throw exception;
+		}
+		return dto;
+	}
+ 
+	@Override
+	public String createIssue(IssueDTO issueDTO) throws IssueException {
+		Issue issue = new Issue();
+		issue.setSummary(issueDTO.getSummary());
+		issue.setDescription(issueDTO.getDescription());
+		issue.setProject(issueDTO.getProject());
+		issue.setAssignee(issueDTO.getAssignee());
+		issue.setCreatedBy(issueDTO.getCreatedBy());
+		issue.setCreatedOn(LocalDate.now());
+		issue.setLastUpdated(LocalDate.now());
+		issue.setSprint(issueDTO.getSprint());
+		issue.setStoryPoint(issueDTO.getStoryPoint());
+		issue.setTags(issueDTO.getTags());
+		issue.setPriority(issueDTO.getPriority());
+		issue.setStatus(issueDTO.getStatus());
+		issue.setType(issueDTO.getType());
+		try {
+			issueRepository.save(issue);
+		} catch(Exception exception) {
+			throw exception;
+		}
+		return "Issue created successfully with Issue ID: " + issue.getId();
+	}
+ 
+	@Override
+	public List<IssueDTO> getAllIssues() throws IssueException {
+		List<Issue> issuesList = issueRepository.findAll();
+		List<IssueDTO> dtoList = new ArrayList<>();
+		try {
+			if(issuesList == null || issuesList.isEmpty()) {
+				return dtoList;
+			}
+			for (Issue issue : issuesList) {
+				IssueDTO dto = new IssueDTO();
+				dto.setId(issue.getId());
+				dto.setSummary(issue.getSummary());
+				dto.setDescription(issue.getDescription());
+				dto.setProject(issue.getProject());
+				dto.setAssignee(issue.getAssignee());
+				dto.setCreatedBy(issue.getCreatedBy());
+				dto.setCreatedOn(issue.getCreatedOn());
+				dto.setLastUpdated(issue.getLastUpdated());
+				dto.setSprint(issue.getSprint());
+				dto.setStoryPoint(issue.getStoryPoint());
+				dto.setTags(issue.getTags());
+				dto.setPriority(issue.getPriority());
+				dto.setStatus(issue.getStatus());
+				dto.setType(issue.getType());
+				dtoList.add(dto);
+			}
+		} catch(Exception exception) {
+			exception.printStackTrace();
+			throw exception;
+		}
+		return dtoList;
+	}
+ 
+	@Override
+	public String updateIssue(Integer id, IssueDTO issueDTO) throws IssueException {
+		Optional<Issue> optional = issueRepository.findById(id);
+		try {
+			Issue issue = optional.orElseThrow(() -> new IssueException("Issue not found with ID: " + id));
+			issue.setSummary(issueDTO.getSummary());
+			issue.setDescription(issueDTO.getDescription());
+			issue.setProject(issueDTO.getProject());
+			issue.setAssignee(issueDTO.getAssignee());
+			issue.setCreatedBy(issueDTO.getCreatedBy());
+			issue.setLastUpdated(LocalDate.now());
+			issue.setSprint(issueDTO.getSprint());
+			issue.setStoryPoint(issueDTO.getStoryPoint());
+			issue.setTags(issueDTO.getTags());
+			issue.setPriority(issueDTO.getPriority());
+			issue.setStatus(issueDTO.getStatus());
+			issue.setType(issueDTO.getType());
+			issueRepository.save(issue);
+		} catch(Exception exception) {
+			exception.printStackTrace();
+			throw exception;
+		}
+		return "Issue details updated successfully for ID: " + id;
+	}
+	
+	@Override
+	public List<IssueDTO> getIssuesByProjectId(Integer projectId) throws IssueException {
+	    List<Issue> issuesList = issueRepository.findByProject(projectId);
+	    List<IssueDTO> dtoList = new ArrayList<>();
+	    try {
+	        if(issuesList == null || issuesList.isEmpty()) {
+	            return dtoList;
+	        }
+	        for (Issue issue : issuesList) {
+	            IssueDTO dto = new IssueDTO();
+	            dto.setId(issue.getId());
+	            dto.setSummary(issue.getSummary());
+	            dto.setDescription(issue.getDescription());
+	            dto.setProject(issue.getProject());
+	            dto.setAssignee(issue.getAssignee());
+	            dto.setCreatedBy(issue.getCreatedBy());
+	            dto.setCreatedOn(issue.getCreatedOn());
+	            dto.setLastUpdated(issue.getLastUpdated());
+	            dto.setSprint(issue.getSprint());
+	            dto.setStoryPoint(issue.getStoryPoint());
+	            dto.setTags(issue.getTags());
+	            dto.setPriority(issue.getPriority());
+	            dto.setStatus(issue.getStatus());
+	            dto.setType(issue.getType());
+	            dtoList.add(dto);
+	        }
+	    } catch(Exception exception) {
+	        exception.printStackTrace();
+	        throw exception;
+	    }
+	    return dtoList;
+	}
+ 
+	@Override
+	public List<IssueDTO> getIssuesByOwnerId(Integer ownerId) throws IssueException {
+	    List<Issue> issuesList = issueRepository.findByCreatedBy(ownerId);
+	    List<IssueDTO> dtoList = new ArrayList<>();
+	    try {
+	        if(issuesList == null || issuesList.isEmpty()) {
+	            return dtoList;
+	        }
+	        for (Issue issue : issuesList) {
+	            IssueDTO dto = new IssueDTO();
+	            dto.setId(issue.getId());
+	            dto.setSummary(issue.getSummary());
+	            dto.setDescription(issue.getDescription());
+	            dto.setProject(issue.getProject());
+	            dto.setAssignee(issue.getAssignee());
+	            dto.setCreatedBy(issue.getCreatedBy());
+	            dto.setCreatedOn(issue.getCreatedOn());
+	            dto.setLastUpdated(issue.getLastUpdated());
+	            dto.setSprint(issue.getSprint());
+	            dto.setStoryPoint(issue.getStoryPoint());
+	            dto.setTags(issue.getTags());
+	            dto.setPriority(issue.getPriority());
+	            dto.setStatus(issue.getStatus());
+	            dto.setType(issue.getType());
+	            dtoList.add(dto);
+	        }
+	    } catch(Exception exception) {
+	        exception.printStackTrace();
+	        throw exception;
+	    }
+	    return dtoList;
+	}
+}
+
+
+
+
+
+
+
+
+
+
+
+
+File 4: ProjectServiceMS/src/main/java/com/project/service/ProjectServiceImpl.java
+
+    @Override
+    public List<ProjectDTO> getAllProjects() throws ProjectException {
+        List<Project> projects = projectRepository.findAll();
+        List<ProjectDTO> projectDTOs = new ArrayList<>();
+        if (projects == null || projects.isEmpty()) {
+            return projectDTOs;
+        }
+        for (Project project : projects) {
+            projectDTOs.add(mapper.map(project, ProjectDTO.class));
+        }
+        return projectDTOs;
+    }
+
+    @Override
+    public List<ProjectDTO> getProjectsByOwner(Integer projectOwner)
+            throws ProjectException {
+        List<Project> projects = projectRepository.findByProjectOwner(projectOwner);
+        List<ProjectDTO> projectDTOs = new ArrayList<>();
+        if (projects == null || projects.isEmpty()) {
+            return projectDTOs;
+        }
+        for (Project project : projects) {
+            projectDTOs.add(mapper.map(project, ProjectDTO.class));
+        }
+        return projectDTOs;
+    }
+
+
+
+
+
+
+    File 2: src/services/projectService.jsx
+
+    import axios from "axios";
+import { getStoredProjects, saveStoredProjects, getStoredIssues } from "./mockData";
+
+export const PROJECT_API_URL = '/api/projects';
+
+export const getAllProjects = async () => {
+    try {
+        const response = await axios.get(PROJECT_API_URL);
+        return response.data;
+    } catch (error) {
+        if (error.response) {
+            const msg = error.response.data?.errorMessage || '';
+            if (msg.includes('No projects found') || error.response.status === 404) {
+                return [];
+            }
+            throw new Error(msg || 'Failed to fetch projects');
+        }
+        console.warn('Backend unavailable, returning mock projects:', error.message);
+        return getStoredProjects();
+    }
+};
+
+export const getProjectsByOwner = async (ownerId) => {
+    try {
+        const response = await axios.get(`${PROJECT_API_URL}/owner/${ownerId}`);
+        return response.data;
+    } catch (error) {
+        if (error.response) {
+            const msg = error.response.data?.errorMessage || '';
+            if (msg.includes('No projects found') || error.response.status === 404) {
+                return [];
+            }
+            throw new Error(msg || 'Failed to fetch owner projects');
+        }
+        console.warn('Backend unavailable, filtering mock projects by owner:', error.message);
+        const projects = getStoredProjects();
+        return projects.filter(p => Number(p.projectOwner) === Number(ownerId));
+    }
+};
+
+export const getProjectById = async (projectId) => {
+    try {
+        const response = await axios.get(`${PROJECT_API_URL}/${projectId}`);
+        return response.data;
+    } catch (error) {
+        console.warn('Backend unavailable, finding project in mock store:', error.message);
+        const projects = getStoredProjects();
+        return projects.find(p => Number(p.id) === Number(projectId)) || null;
+    }
+};
+
+export const createProject = async (project) => {
+    try {
+        const response = await axios.post(PROJECT_API_URL, project);
+        return response.data;
+    } catch (error) {
+        if (error.response) {
+            const msg = error.response.data?.errorMessage || error.response.data?.message || (typeof error.response.data === 'string' ? error.response.data : 'Failed to create project');
+            throw new Error(msg);
+        }
+        console.warn('Backend unavailable, creating project in mock store:', error.message);
+        const projects = getStoredProjects();
+        const newProject = {
+            id: projects.length > 0 ? Math.max(...projects.map(p => p.id || 0)) + 1 : 1,
+            projectName: project.projectName,
+            projectOwner: Number(project.projectOwner),
+            startDate: project.startDate,
+            endDate: project.endDate
+        };
+        projects.push(newProject);
+        saveStoredProjects(projects);
+        return `Project created successfully with ID: ${newProject.id}`;
+    }
+};
+
+export const updateProject = async (id, project) => {
+    try {
+        const response = await axios.put(`${PROJECT_API_URL}/${id}`, project);
+        return response.data;
+    } catch (error) {
+        if (error.response) {
+            const msg = error.response.data?.errorMessage || error.response.data?.message || 'Failed to update project';
+            throw new Error(msg);
+        }
+        console.warn('Backend unavailable, updating project in mock store:', error.message);
+        const projects = getStoredProjects();
+        const index = projects.findIndex(p => Number(p.id) === Number(id));
+        if (index !== -1) {
+            projects[index] = { ...projects[index], ...project };
+            saveStoredProjects(projects);
+        }
+        return `Project updated successfully for ID: ${id}`;
+    }
+};
+
+export const deleteProject = async (id) => {
+    try {
+        const response = await axios.delete(`${PROJECT_API_URL}/${id}`);
+        return response.data;
+    } catch (error) {
+        if (error.response) {
+            const msg = error.response.data?.errorMessage || 'Failed to delete project';
+            throw new Error(msg);
+        }
+        console.warn('Backend unavailable, deleting project from mock store:', error.message);
+        const projects = getStoredProjects().filter(p => Number(p.id) !== Number(id));
+        saveStoredProjects(projects);
+        return `Project deleted successfully with ID: ${id}`;
+    }
+};
+
+export const getIssuesByProjectId = async (projectId) => {
+    try {
+        const response = await axios.get(`${PROJECT_API_URL}/${projectId}/issues`);
+        return response.data;
+    } catch (error) {
+        if (error.response) {
+            const msg = error.response.data?.errorMessage || '';
+            if (msg.includes('No issues discovered') || error.response.status === 404) {
+                return [];
+            }
+        }
+        console.warn('Backend unavailable, filtering mock issues by project:', error.message);
+        const issues = getStoredIssues();
+        return issues.filter(i => Number(i.project) === Number(projectId));
+    }
+};
+
+
+
+
+
+
+
+
+
+
+File 3: src/services/issueService.jsx
+
+import axios from "axios";
+import { getStoredIssues, saveStoredIssues } from "./mockData";
+
+export const ISSUE_API_URL = '/api/issues';
+
+export const getAllIssues = async () => {
+    try {
+        const response = await axios.get(ISSUE_API_URL);
+        return response.data;
+    } catch (error) {
+        if (error.response) {
+            const msg = error.response.data?.errorMessage || '';
+            if (msg.includes('No issues') || error.response.status === 404) {
+                return [];
+            }
+            throw new Error(msg || 'Failed to fetch issues');
+        }
+        console.warn('Backend unavailable, returning mock issues:', error.message);
+        return getStoredIssues();
+    }
+};
+
+export const getIssueById = async (id) => {
+    try {
+        const response = await axios.get(`${ISSUE_API_URL}/${id}`);
+        return response.data;
+    } catch (error) {
+        if (error.response) {
+            const msg = error.response.data?.errorMessage || error.response.data?.message || 'Issue not found';
+            throw new Error(msg);
+        }
+        console.warn('Backend unavailable, finding issue in mock store:', error.message);
+        const issues = getStoredIssues();
+        return issues.find(i => Number(i.id) === Number(id)) || null;
+    }
+};
+
+export const getIssuesByProjectId = async (projectId) => {
+    try {
+        const response = await axios.get(`${ISSUE_API_URL}/project/${projectId}`);
+        return response.data;
+    } catch (error) {
+        if (error.response) {
+            const msg = error.response.data?.errorMessage || '';
+            if (msg.includes('No issues discovered') || msg.toLowerCase().includes('no issues') || error.response.status === 404) {
+                return [];
+            }
+            throw new Error(msg || 'Failed to fetch issues for project');
+        }
+        console.warn('Backend unavailable, filtering mock issues by project:', error.message);
+        const issues = getStoredIssues();
+        return issues.filter(i => Number(i.project) === Number(projectId));
+    }
+};
+
+export const getIssuesByOwnerId = async (ownerId) => {
+    try {
+        const response = await axios.get(`${ISSUE_API_URL}/owner/${ownerId}`);
+        return response.data;
+    } catch (error) {
+        if (error.response) {
+            const msg = error.response.data?.errorMessage || '';
+            if (msg.includes('No issues discovered') || msg.toLowerCase().includes('no issues') || error.response.status === 404) {
+                return [];
+            }
+            throw new Error(msg || 'Failed to fetch issues for owner');
+        }
+        console.warn('Backend unavailable, filtering mock issues by owner:', error.message);
+        const issues = getStoredIssues();
+        return issues.filter(i => Number(i.createdBy) === Number(ownerId));
+    }
+};
+
+export const getIssuesByAssigneeId = async (assigneeId) => {
+    try {
+        const response = await axios.get(`${ISSUE_API_URL}/assignee/${assigneeId}`);
+        return response.data;
+    } catch (error) {
+        if (error.response) {
+            const msg = error.response.data?.errorMessage || '';
+            if (msg.includes('No issues discovered') || msg.toLowerCase().includes('no issues') || error.response.status === 404) {
+                return [];
+            }
+            throw new Error(msg || 'Failed to fetch issues for assignee');
+        }
+        console.warn('Backend unavailable, filtering mock issues by assignee:', error.message);
+        const issues = getStoredIssues();
+        return issues.filter(i => Number(i.assignee) === Number(assigneeId));
+    }
+};
+
+export const createIssue = async (issue) => {
+    try {
+        const response = await axios.post(ISSUE_API_URL, issue);
+        return response.data;
+    } catch (error) {
+        if (error.response) {
+            const msg = error.response.data?.errorMessage || error.response.data?.message || (typeof error.response.data === 'string' ? error.response.data : 'Failed to create issue');
+            throw new Error(msg);
+        }
+        console.warn('Backend unavailable, creating issue in mock store:', error.message);
+        const issues = getStoredIssues();
+        const now = new Date();
+        const formattedDate = `${String(now.getDate()).padStart(2, '0')}-${String(now.getMonth() + 1).padStart(2, '0')}-${now.getFullYear()}`;
+        const newIssue = {
+            id: issues.length > 0 ? Math.max(...issues.map(i => i.id || 0)) + 1 : 1,
+            summary: issue.summary,
+            description: issue.description || '',
+            project: Number(issue.project),
+            assignee: Number(issue.assignee),
+            createdBy: Number(issue.createdBy),
+            createdOn: formattedDate,
+            lastUpdated: `${formattedDate} | ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`,
+            sprint: String(issue.sprint),
+            storyPoint: Number(issue.storyPoint),
+            tags: issue.tags || '',
+            priority: issue.priority,
+            status: issue.status || 'TO_DO',
+            type: issue.type || 'TASK'
+        };
+        issues.push(newIssue);
+        saveStoredIssues(issues);
+        return `Issue created successfully with Issue ID: ${newIssue.id}`;
+    }
+};
+
+export const updateIssue = async (id, issue) => {
+    try {
+        const response = await axios.put(`${ISSUE_API_URL}/${id}`, issue);
+        return response.data;
+    } catch (error) {
+        if (error.response) {
+            const msg = error.response.data?.errorMessage || error.response.data?.message || 'Failed to update issue';
+            throw new Error(msg);
+        }
+        console.warn('Backend unavailable, updating issue in mock store:', error.message);
+        const issues = getStoredIssues();
+        const index = issues.findIndex(i => Number(i.id) === Number(id));
+        if (index !== -1) {
+            const now = new Date();
+            const formattedDate = `${String(now.getDate()).padStart(2, '0')}-${String(now.getMonth() + 1).padStart(2, '0')}-${now.getFullYear()}`;
+            issues[index] = {
+                ...issues[index],
+                ...issue,
+                lastUpdated: `${formattedDate} | ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`
+            };
+            saveStoredIssues(issues);
+        }
+        return `Issue details updated successfully for ID: ${id}`;
+    }
+};
+
+
+
+
+
+
+
+
+
+
+
